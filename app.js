@@ -34,9 +34,19 @@ function driveMediaUrl(id) {
   return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(config.googleDriveApiKey)}`;
 }
 
-function driveThumbnailUrl(thumbnailLink) {
+function preferredImageWidth(originalWidth) {
+  const frameWidth = viewer?.clientWidth || window.innerWidth || 1280;
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  const configuredMax = Number(config.maxImageWidth) || 1600;
+  const connectionMax = navigator.connection?.saveData ? 960 : configuredMax;
+  const targetWidth = Math.max(640, Math.ceil(frameWidth * pixelRatio / 160) * 160);
+  return Math.min(targetWidth, connectionMax, Number(originalWidth) || connectionMax);
+}
+
+function driveThumbnailUrl(thumbnailLink, originalWidth) {
   if (!thumbnailLink) return "";
-  return thumbnailLink.replace(/=s\d+(?:-[^#?]+)?(?=$|[?#])/, "=w1920");
+  const width = preferredImageWidth(originalWidth);
+  return thumbnailLink.replace(/=[^#?]+(?=$|[?#])/, `=w${width}`);
 }
 
 async function loadDriveSlides() {
@@ -53,7 +63,7 @@ async function loadDriveSlides() {
     .map((file, i) => ({
     id: file.id,
     name: file.name.replace(/\.[^.]+$/, ""),
-    url: driveThumbnailUrl(file.thumbnailLink) || driveMediaUrl(file.id),
+    url: driveThumbnailUrl(file.thumbnailLink, file.imageMediaMetadata?.width) || driveMediaUrl(file.id),
     fallbackUrl: driveMediaUrl(file.id),
     color: ["#c89d88", "#8fa49a", "#aa98b1", "#bea96f"][i % 4],
     date: file.createdTime ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "long" }).format(new Date(file.createdTime)) : "",
