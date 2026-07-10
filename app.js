@@ -36,6 +36,7 @@ let firebaseDatabase;
 let firebaseUser;
 let firebaseAuthPromise;
 let unsubscribeComments;
+let unsubscribeLikes;
 let lastCommentAt = 0;
 let sharedCommentsEnabled = false;
 let galleryRendered = false;
@@ -175,7 +176,7 @@ async function initializeSharedComments() {
     });
     await firebaseAuthPromise;
     sharedCommentsEnabled = true;
-    subscribeToCurrentComments();
+    subscribeToCurrentSocial();
   } catch {
     sharedCommentsEnabled = false;
     showError("Chưa kết nối được bình luận chung. Bình luận đang được lưu trên thiết bị này.");
@@ -198,6 +199,26 @@ function subscribeToCurrentComments() {
   }, () => {
     showError("Không thể đồng bộ bình luận. Hãy kiểm tra Firebase Rules.");
   });
+}
+
+function subscribeToCurrentLikes() {
+  unsubscribeLikes?.();
+  unsubscribeLikes = undefined;
+  if (!sharedCommentsEnabled || !firebaseDatabase || !slides[index] || !firebaseUser) return;
+  const mediaId = slides[index].id;
+  unsubscribeLikes = onValue(ref(firebaseDatabase, `likes/${mediaId}`), (snapshot) => {
+    if (!reactions[mediaId]) reactions[mediaId] = { loved: false, comments: [] };
+    reactions[mediaId].loved = snapshot.hasChild(firebaseUser.uid);
+    reactions[mediaId].heartCount = snapshot.size;
+    if (slides[index]?.id === mediaId) updateSocial();
+  }, () => {
+    showError("Chưa thể đồng bộ lượt tim. Hãy cập nhật nhánh likes trong Firebase Rules.");
+  });
+}
+
+function subscribeToCurrentSocial() {
+  subscribeToCurrentComments();
+  subscribeToCurrentLikes();
 }
 
 function driveMediaUrl(id) {
@@ -265,7 +286,7 @@ function updateSocial() {
   heartButton.classList.toggle("loved", reaction.loved);
   heartButton.setAttribute("aria-pressed", String(reaction.loved));
   heartButton.setAttribute("aria-label", reaction.loved ? "Bỏ tim ảnh này" : "Thả tim ảnh này");
-  $("#heartCount").textContent = reaction.loved ? "1" : "0";
+  $("#heartCount").textContent = reaction.heartCount ?? (reaction.loved ? "1" : "0");
   $("#commentCount").textContent = reaction.comments.length;
   if ($("#commentDrawer").classList.contains("open")) renderComments();
 }
@@ -400,7 +421,7 @@ function showSlide(nextIndex, userAction = false) {
   $("#ambient").style.background = slide.color;
   updateProgress();
   updateSocial();
-  subscribeToCurrentComments();
+  subscribeToCurrentSocial();
 
   const handleMediaError = (label) => {
     if (requestId !== imageRequestId) return;
@@ -472,8 +493,20 @@ function showSlide(nextIndex, userAction = false) {
   if (userAction && navigator.vibrate) navigator.vibrate(8);
 }
 
-function toggleHeart() {
+async function toggleHeart() {
   const reaction = currentReaction();
+  if (sharedCommentsEnabled && firebaseDatabase && firebaseUser) {
+    const heartRef = ref(firebaseDatabase, `likes/${slides[index].id}/${firebaseUser.uid}`);
+    try {
+      if (reaction.loved) await remove(heartRef);
+      else await set(heartRef, true);
+      if (!reaction.loved && navigator.vibrate) navigator.vibrate([18, 35, 18]);
+      return;
+    } catch {
+      showError("Không thể cập nhật lượt tim. Hãy kiểm tra Firebase Rules.");
+      return;
+    }
+  }
   reaction.loved = !reaction.loved;
   saveReactions(); updateSocial();
   if (reaction.loved && navigator.vibrate) navigator.vibrate([18, 35, 18]);
