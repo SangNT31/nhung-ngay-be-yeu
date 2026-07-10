@@ -200,6 +200,16 @@ function showError(message) {
   setTimeout(() => toast.classList.remove("show"), 4500);
 }
 
+function registerImageCache() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    const workerUrl = new URL("sw.js", import.meta.url);
+    navigator.serviceWorker.register(workerUrl, { scope: "./" }).catch(() => {
+      // Album vẫn hoạt động bình thường nếu trình duyệt chặn Service Worker.
+    });
+  });
+}
+
 $("#prevButton").addEventListener("click", () => showSlide(index - 1, true));
 $("#nextButton").addEventListener("click", () => showSlide(index + 1, true));
 $("#heartButton").addEventListener("click", toggleHeart);
@@ -230,6 +240,7 @@ viewer.addEventListener("touchend", (event) => {
 document.addEventListener("visibilitychange", () => { clearTimeout(timer); if (!document.hidden && playing) showSlide(index); });
 
 (async function init() {
+  registerImageCache();
   document.querySelector(".brand span:last-child").textContent = config.albumTitle || "Những ngày bé xinh";
   try { slides = await loadDriveSlides(); }
   catch (error) { slides = demoSlides; showError(error.message); }
