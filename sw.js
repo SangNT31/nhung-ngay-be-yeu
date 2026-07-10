@@ -1,4 +1,4 @@
-const VERSION = "v15";
+const VERSION = "v16";
 const STATIC_CACHE = `baby-album-static-${VERSION}`;
 const IMAGE_CACHE = `baby-album-images-${VERSION}`;
 const MAX_CACHED_IMAGES = 60;
@@ -20,15 +20,18 @@ async function trimImageCache(cache) {
   if (overflow > 0) await Promise.all(keys.slice(0, overflow).map((key) => cache.delete(key)));
 }
 
-async function cacheFirstImage(request) {
+async function cacheFirstImage(request, event) {
   const cache = await caches.open(IMAGE_CACHE);
   const cached = await cache.match(request);
   if (cached) return cached;
 
   const response = await fetch(request);
   if (response.ok || response.type === "opaque") {
-    await cache.put(request, response.clone());
-    await trimImageCache(cache);
+    const responseForCache = response.clone();
+    event.waitUntil((async () => {
+      await cache.put(request, responseForCache);
+      await trimImageCache(cache);
+    })());
   }
   return response;
 }
@@ -55,7 +58,7 @@ self.addEventListener("fetch", (event) => {
   if (isDriveListRequest) return;
 
   if (request.destination === "image") {
-    event.respondWith(cacheFirstImage(request));
+    event.respondWith(cacheFirstImage(request, event));
     return;
   }
 

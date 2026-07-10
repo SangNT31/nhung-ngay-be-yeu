@@ -242,7 +242,7 @@ function preferredImageWidth(originalWidth) {
 function driveThumbnailUrl(thumbnailLink, originalWidth) {
   if (!thumbnailLink) return "";
   const width = preferredImageWidth(originalWidth);
-  return thumbnailLink.replace(/=[^#?]+(?=$|[?#])/, `=w${width}`);
+  return thumbnailLink.replace(/=[^#?]+(?=$|[?#])/, `=w${width}-rw`);
 }
 
 async function loadDriveSlides() {
@@ -473,11 +473,9 @@ function showSlide(nextIndex, userAction = false) {
       if (sourceIndex < sources.length) return loadSource();
       handleMediaError("ảnh");
     };
-    incomingPhoto.onload = async () => {
+    incomingPhoto.onload = () => {
       if (requestId !== imageRequestId) return;
       clearTimeout(loadTimeout);
-      await incomingPhoto.decode?.().catch(() => {});
-      if (requestId !== imageRequestId) return;
       slideFrame.classList.remove("media-loading");
       incomingPhoto.classList.add("ready");
       initializeSharedComments();
