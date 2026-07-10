@@ -9,6 +9,8 @@ export default function AlbumPage() {
           <span>Những ngày bé xinh</span>
         </a>
         <div className="topbar-actions">
+          <button className="icon-button" id="galleryButton" aria-label="Mở thư viện ảnh" title="Xem dạng lưới"><Icon><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></Icon></button>
+          <button className="icon-button install-button" id="installButton" aria-label="Cài album như ứng dụng" title="Cài ứng dụng" hidden><Icon><path d="M12 3v12M7 10l5 5 5-5M5 20h14" /></Icon></button>
           <button className="icon-button music-button" id="musicButton" aria-label="Bật nhạc nền" aria-pressed="false" title="Nhạc nền"><Icon><path d="M9 18V5l10-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="16" cy="16" r="3" /></Icon></button>
           <button className="icon-button" id="fullscreenButton" aria-label="Xem toàn màn hình" title="Toàn màn hình"><Icon><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></Icon></button>
         </div>
@@ -35,8 +37,8 @@ export default function AlbumPage() {
             <button className="social-button" id="commentButton" aria-label="Mở bình luận">
               <Icon><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></Icon><span id="commentCount">0</span>
             </button>
-            <button className="social-button facebook-button" id="facebookShareButton" aria-label="Chia sẻ nội dung này lên Facebook" title="Chia sẻ lên Facebook">
-              <Icon><path d="M14 21v-8h3l.5-4H14V7c0-1.2.4-2 2-2h2V1.5c-.7-.1-1.8-.2-3-.2-3 0-5 1.8-5 5.2V9H7v4h3v8" /></Icon>
+            <button className="social-button share-button" id="shareButton" aria-label="Chia sẻ nội dung này" title="Chia sẻ">
+              <Icon><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" /></Icon>
             </button>
           </div>
         </div>
@@ -55,6 +57,11 @@ export default function AlbumPage() {
     </main>
 
     <button className="sound-prompt" id="soundPrompt" type="button" hidden><span aria-hidden="true">♫</span>Bật trải nghiệm có nhạc</button>
+
+    <section className="gallery-panel" id="galleryPanel" aria-hidden="true" aria-labelledby="galleryHeading">
+      <header className="gallery-header"><div><p className="eyebrow drawer-eyebrow">DÒNG THỜI GIAN</p><h2 id="galleryHeading">Mọi khoảnh khắc</h2></div><button className="icon-button" id="closeGallery" aria-label="Đóng thư viện">×</button></header>
+      <div className="gallery-timeline" id="galleryTimeline"></div>
+    </section>
 
     <div className="drawer-backdrop" id="drawerBackdrop"></div>
     <aside className="comment-drawer" id="commentDrawer" aria-hidden="true" aria-labelledby="commentHeading">

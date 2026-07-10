@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f6f3ee" />
     <meta name="description" content="Những khoảnh khắc đáng yêu của bé, được lưu giữ từ Google Drive." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://www.googleapis.com" crossorigin />
     <link rel="stylesheet" href="styles.css" />
     <title>Khoảnh khắc của con</title>
@@ -19,6 +21,8 @@
           <span>Những ngày bé xinh</span>
         </a>
         <div class="topbar-actions">
+          <button class="icon-button" id="galleryButton" aria-label="Mở thư viện ảnh" title="Xem dạng lưới"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></svg></button>
+          <button class="icon-button install-button" id="installButton" aria-label="Cài album như ứng dụng" title="Cài ứng dụng" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 20h14" /></svg></button>
           <button class="icon-button music-button" id="musicButton" aria-label="Bật nhạc nền" aria-pressed="false" title="Nhạc nền">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="16" cy="16" r="3" /></svg>
           </button>
@@ -51,8 +55,8 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></svg>
               <span id="commentCount">0</span>
             </button>
-            <button class="social-button facebook-button" id="facebookShareButton" aria-label="Chia sẻ nội dung này lên Facebook" title="Chia sẻ lên Facebook">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 21v-8h3l.5-4H14V7c0-1.2.4-2 2-2h2V1.5c-.7-.1-1.8-.2-3-.2-3 0-5 1.8-5 5.2V9H7v4h3v8" /></svg>
+            <button class="social-button share-button" id="shareButton" aria-label="Chia sẻ nội dung này" title="Chia sẻ">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" /></svg>
             </button>
           </div>
         </div>
@@ -75,6 +79,10 @@
       </footer>
     </main>
     <button class="sound-prompt" id="soundPrompt" type="button" hidden><span aria-hidden="true">♫</span>Bật trải nghiệm có nhạc</button>
+    <section class="gallery-panel" id="galleryPanel" aria-hidden="true" aria-labelledby="galleryHeading">
+      <header class="gallery-header"><div><p class="eyebrow drawer-eyebrow">DÒNG THỜI GIAN</p><h2 id="galleryHeading">Mọi khoảnh khắc</h2></div><button class="icon-button" id="closeGallery" aria-label="Đóng thư viện">×</button></header>
+      <div class="gallery-timeline" id="galleryTimeline"></div>
+    </section>
     <div class="drawer-backdrop" id="drawerBackdrop"></div>
     <aside class="comment-drawer" id="commentDrawer" aria-hidden="true" aria-labelledby="commentHeading">
       <header class="drawer-header">

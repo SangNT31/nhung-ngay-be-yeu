@@ -1,0 +1,19 @@
+{
+  "name": "Những ngày bé lớn khôn",
+  "short_name": "Album của bé",
+  "description": "Những khoảnh khắc đáng yêu được lưu giữ từ Google Drive.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f3ee",
+  "theme_color": "#f6f3ee",
+  "icons": [
+    {
+      "src": "assets/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

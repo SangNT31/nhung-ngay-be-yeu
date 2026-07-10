@@ -14,6 +14,9 @@ const slideFrame = $(".slide-frame");
 const playButton = $("#playButton");
 const musicButton = $("#musicButton");
 const soundPrompt = $("#soundPrompt");
+const galleryPanel = $("#galleryPanel");
+const galleryTimeline = $("#galleryTimeline");
+const installButton = $("#installButton");
 const progress = $("#progress");
 let slides = [];
 let index = 0;
@@ -28,6 +31,7 @@ let musicGain;
 let musicTimer;
 let musicPlaying = false;
 let trackIndex = 0;
+let deferredInstallPrompt;
 
 const tracks = [
   { name: "Giấc mơ kẹo ngọt", tempo: .5, notes: [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 1046.5, 783.99, 587.33, 659.25, 523.25, 392] },
@@ -169,6 +173,7 @@ async function loadDriveSlides() {
     url: file.mimeType?.startsWith("video/") ? driveMediaUrl(file.id) : driveThumbnailUrl(file.thumbnailLink, file.imageMediaMetadata?.width) || driveMediaUrl(file.id),
     fallbackUrl: file.mimeType?.startsWith("video/") ? "" : driveMediaUrl(file.id),
     poster: file.mimeType?.startsWith("video/") ? driveThumbnailUrl(file.thumbnailLink, file.videoMediaMetadata?.width) : "",
+    createdTime: file.createdTime || "",
     color: ["#c89d88", "#8fa49a", "#aa98b1", "#bea96f"][i % 4],
     date: file.createdTime ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "long" }).format(new Date(file.createdTime)) : "",
   }));
@@ -201,22 +206,103 @@ function updateSocial() {
   if ($("#commentDrawer").classList.contains("open")) renderComments();
 }
 
-function shareCurrentOnFacebook() {
+async function shareCurrentMedia() {
   const slide = slides[index];
   if (!slide) return;
   const sharedUrl = new URL(window.location.href);
   sharedUrl.search = "";
   sharedUrl.hash = "";
   sharedUrl.searchParams.set("media", slide.id);
-  const facebookUrl = new URL("https://www.facebook.com/sharer/sharer.php");
-  facebookUrl.searchParams.set("u", sharedUrl.href);
-  facebookUrl.searchParams.set("quote", slide.name);
-  const popup = window.open(facebookUrl.href, "facebook-share", "popup=yes,width=640,height=720");
-  if (popup) popup.opener = null;
-  if (!popup) {
-    navigator.clipboard?.writeText(sharedUrl.href);
-    showError("Trình duyệt đã chặn cửa sổ Facebook. Liên kết ảnh đã được sao chép.");
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: slide.name, text: `Xem ${slide.type === "video" ? "video" : "ảnh"} ${slide.name}`, url: sharedUrl.href });
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+    }
   }
+  await navigator.clipboard?.writeText(sharedUrl.href);
+  showError("Liên kết đã được sao chép. Bạn có thể gửi qua Facebook, Zalo hoặc Messenger.");
+}
+
+function timelineLabel(createdTime) {
+  if (!createdTime) return "Những kỷ niệm khác";
+  return new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(new Date(createdTime));
+}
+
+function renderGallery() {
+  galleryTimeline.innerHTML = "";
+  const groups = new Map();
+  slides.forEach((slide, slideIndex) => {
+    const label = timelineLabel(slide.createdTime);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push({ slide, slideIndex });
+  });
+  groups.forEach((items, label) => {
+    const section = document.createElement("section");
+    section.className = "timeline-group";
+    const heading = document.createElement("h3");
+    heading.className = "timeline-title";
+    heading.append(document.createTextNode(label));
+    const count = document.createElement("span");
+    count.className = "timeline-count";
+    count.textContent = `${items.length} KHOẢNH KHẮC`;
+    heading.append(count);
+    const grid = document.createElement("div");
+    grid.className = "gallery-grid";
+    items.forEach(({ slide, slideIndex }) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "gallery-card";
+      card.ariaLabel = `Xem ${slide.type === "video" ? "video" : "ảnh"}: ${slide.name}`;
+      const thumbnail = document.createElement("img");
+      thumbnail.loading = "lazy";
+      thumbnail.decoding = "async";
+      thumbnail.src = slide.type === "video" ? slide.poster : slide.url;
+      thumbnail.alt = "";
+      const name = document.createElement("span");
+      name.className = "gallery-card-name";
+      name.textContent = slide.name;
+      card.append(thumbnail, name);
+      if (slide.type === "video") {
+        const badge = document.createElement("span");
+        badge.className = "video-badge";
+        badge.textContent = "▶";
+        card.append(badge);
+      }
+      card.addEventListener("click", () => { closeGallery(false); showSlide(slideIndex, true); });
+      grid.append(card);
+    });
+    section.append(heading, grid);
+    galleryTimeline.append(section);
+  });
+}
+
+function openGallery() {
+  clearTimeout(timer);
+  video.pause();
+  galleryPanel.classList.add("open");
+  galleryPanel.setAttribute("aria-hidden", "false");
+  galleryTimeline.scrollTop = 0;
+  $("#closeGallery").focus();
+}
+
+function closeGallery(resume = true) {
+  galleryPanel.classList.remove("open");
+  galleryPanel.setAttribute("aria-hidden", "true");
+  if (resume && playing) showSlide(index);
+  $("#galleryButton").focus();
+}
+
+async function installApp() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = undefined;
+    installButton.hidden = true;
+    return;
+  }
+  showError("Trên iPhone: chọn Chia sẻ → Thêm vào Màn hình chính để cài album.");
 }
 
 function showSlide(nextIndex, userAction = false) {
@@ -394,7 +480,10 @@ $("#prevButton").addEventListener("click", () => showSlide(index - 1, true));
 $("#nextButton").addEventListener("click", () => showSlide(index + 1, true));
 $("#heartButton").addEventListener("click", toggleHeart);
 $("#commentButton").addEventListener("click", openComments);
-$("#facebookShareButton").addEventListener("click", shareCurrentOnFacebook);
+$("#shareButton").addEventListener("click", shareCurrentMedia);
+$("#galleryButton").addEventListener("click", openGallery);
+$("#closeGallery").addEventListener("click", () => closeGallery());
+installButton.addEventListener("click", installApp);
 $("#closeComments").addEventListener("click", closeComments);
 $("#drawerBackdrop").addEventListener("click", closeComments);
 $("#commentForm").addEventListener("submit", (event) => {
@@ -412,11 +501,19 @@ document.addEventListener("pointerdown", startMusicOnFirstInteraction);
 document.addEventListener("keydown", startMusicOnFirstInteraction);
 $("#fullscreenButton").addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.());
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && galleryPanel.classList.contains("open")) { closeGallery(); return; }
+  if (galleryPanel.classList.contains("open")) return;
   if (event.key === "ArrowLeft") showSlide(index - 1, true);
   if (event.key === "ArrowRight") showSlide(index + 1, true);
   if (event.key === " ") { event.preventDefault(); togglePlay(); }
   if (event.key === "Escape" && $("#commentDrawer").classList.contains("open")) closeComments();
 });
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installButton.hidden = false;
+});
+window.addEventListener("appinstalled", () => { installButton.hidden = true; deferredInstallPrompt = undefined; });
 viewer.addEventListener("touchstart", (event) => { touchStartX = event.changedTouches[0].clientX; }, { passive: true });
 viewer.addEventListener("touchend", (event) => {
   const delta = event.changedTouches[0].clientX - touchStartX;
@@ -439,6 +536,10 @@ document.addEventListener("visibilitychange", () => {
   try { slides = await loadDriveSlides(); }
   catch (error) { slides = demoSlides; showError(error.message); }
   buildProgress();
+  renderGallery();
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  if (isIos && !isStandalone) installButton.hidden = false;
   const sharedMediaId = new URLSearchParams(window.location.search).get("media");
   const sharedIndex = sharedMediaId ? slides.findIndex((slide) => slide.id === sharedMediaId) : -1;
   showSlide(sharedIndex >= 0 ? sharedIndex : 0);
