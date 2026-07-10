@@ -5,4 +5,5 @@ window.ALBUM_CONFIG = {
   googleDriveFolderId: "13tKdwPE2_VWAHGSPQNHdJHjnjhpY1IGk",
   albumTitle: "Những ngày bé lớn khôn",
   slideDuration: 6000,
+  maxImageWidth: 1600,
 };
