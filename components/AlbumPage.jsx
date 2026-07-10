@@ -35,6 +35,9 @@ export default function AlbumPage() {
             <button className="social-button" id="commentButton" aria-label="Mở bình luận">
               <Icon><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></Icon><span id="commentCount">0</span>
             </button>
+            <button className="social-button facebook-button" id="facebookShareButton" aria-label="Chia sẻ nội dung này lên Facebook" title="Chia sẻ lên Facebook">
+              <Icon><path d="M14 21v-8h3l.5-4H14V7c0-1.2.4-2 2-2h2V1.5c-.7-.1-1.8-.2-3-.2-3 0-5 1.8-5 5.2V9H7v4h3v8" /></Icon><span>Share</span>
+            </button>
           </div>
         </div>
         <button className="nav prev" id="prevButton" aria-label="Ảnh trước"><Icon><path d="m15 18-6-6 6-6" /></Icon></button>

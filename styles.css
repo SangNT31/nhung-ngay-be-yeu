@@ -78,6 +78,9 @@ button { color: inherit; }
 .social-button svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .heart-button.loved { color: #fff; background: #d8686b; border-color: transparent; }
 .heart-button.loved svg { fill: currentColor; animation: heart-pop .38s var(--ease); }
+.facebook-button { background: rgba(24, 119, 242, .78); border-color: rgba(255,255,255,.28); }
+.facebook-button:hover { background: #1877f2; }
+.facebook-button svg { fill: currentColor; stroke: none; }
 @keyframes heart-pop { 50% { transform: scale(1.45); } }
 .nav { position: absolute; z-index: 3; top: 50%; width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.82); backdrop-filter: blur(8px); transform: translateY(-50%); box-shadow: 0 6px 20px rgba(31,25,20,.1); transition: transform .2s ease, background .2s ease; }
 .nav:hover { background: #fff; transform: translateY(-50%) scale(1.06); }

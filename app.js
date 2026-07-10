@@ -201,6 +201,24 @@ function updateSocial() {
   if ($("#commentDrawer").classList.contains("open")) renderComments();
 }
 
+function shareCurrentOnFacebook() {
+  const slide = slides[index];
+  if (!slide) return;
+  const sharedUrl = new URL(window.location.href);
+  sharedUrl.search = "";
+  sharedUrl.hash = "";
+  sharedUrl.searchParams.set("media", slide.id);
+  const facebookUrl = new URL("https://www.facebook.com/sharer/sharer.php");
+  facebookUrl.searchParams.set("u", sharedUrl.href);
+  facebookUrl.searchParams.set("quote", slide.name);
+  const popup = window.open(facebookUrl.href, "facebook-share", "popup=yes,width=640,height=720");
+  if (popup) popup.opener = null;
+  if (!popup) {
+    navigator.clipboard?.writeText(sharedUrl.href);
+    showError("Trình duyệt đã chặn cửa sổ Facebook. Liên kết ảnh đã được sao chép.");
+  }
+}
+
 function showSlide(nextIndex, userAction = false) {
   clearTimeout(timer);
   index = (nextIndex + slides.length) % slides.length;
@@ -376,6 +394,7 @@ $("#prevButton").addEventListener("click", () => showSlide(index - 1, true));
 $("#nextButton").addEventListener("click", () => showSlide(index + 1, true));
 $("#heartButton").addEventListener("click", toggleHeart);
 $("#commentButton").addEventListener("click", openComments);
+$("#facebookShareButton").addEventListener("click", shareCurrentOnFacebook);
 $("#closeComments").addEventListener("click", closeComments);
 $("#drawerBackdrop").addEventListener("click", closeComments);
 $("#commentForm").addEventListener("submit", (event) => {
@@ -419,5 +438,8 @@ document.addEventListener("visibilitychange", () => {
   document.querySelector(".brand span:last-child").textContent = config.albumTitle || "Những ngày bé xinh";
   try { slides = await loadDriveSlides(); }
   catch (error) { slides = demoSlides; showError(error.message); }
-  buildProgress(); showSlide(0);
+  buildProgress();
+  const sharedMediaId = new URLSearchParams(window.location.search).get("media");
+  const sharedIndex = sharedMediaId ? slides.findIndex((slide) => slide.id === sharedMediaId) : -1;
+  showSlide(sharedIndex >= 0 ? sharedIndex : 0);
 })();
