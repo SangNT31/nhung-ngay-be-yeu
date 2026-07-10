@@ -15,6 +15,7 @@ let index = 0;
 let playing = true;
 let timer;
 let touchStartX = 0;
+let imageRequestId = 0;
 const storageKey = "baby-album-reactions-v1";
 let reactions = loadReactions();
 
@@ -33,19 +34,27 @@ function driveMediaUrl(id) {
   return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(config.googleDriveApiKey)}`;
 }
 
+function driveThumbnailUrl(thumbnailLink) {
+  if (!thumbnailLink) return "";
+  return thumbnailLink.replace(/=s\d+(?:-[^#?]+)?(?=$|[?#])/, "=w1920");
+}
+
 async function loadDriveSlides() {
   if (!config.googleDriveApiKey || !config.googleDriveFolderId) return demoSlides;
   const query = `'${config.googleDriveFolderId}' in parents and mimeType contains 'image/' and trashed = false`;
   const params = new URLSearchParams({ q: query, fields: "files(id,name,imageMediaMetadata,createdTime,thumbnailLink)", orderBy: "createdTime desc", pageSize: "100", key: config.googleDriveApiKey });
-  const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`);
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, { signal: AbortSignal.timeout(12000) });
   if (!response.ok) throw new Error("Không thể đọc album. Hãy kiểm tra API key và quyền chia sẻ thư mục Drive.");
   const data = await response.json();
   if (!data.files?.length) throw new Error("Thư mục Drive chưa có ảnh hoặc ảnh chưa được chia sẻ công khai.");
   $("#demoBadge").hidden = true;
-  return data.files.map((file, i) => ({
+  return data.files
+    .sort((a, b) => new Date(b.createdTime || 0) - new Date(a.createdTime || 0))
+    .map((file, i) => ({
     id: file.id,
     name: file.name.replace(/\.[^.]+$/, ""),
-    url: driveMediaUrl(file.id),
+    url: driveThumbnailUrl(file.thumbnailLink) || driveMediaUrl(file.id),
+    fallbackUrl: driveMediaUrl(file.id),
     color: ["#c89d88", "#8fa49a", "#aa98b1", "#bea96f"][i % 4],
     date: file.createdTime ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "long" }).format(new Date(file.createdTime)) : "",
   }));
@@ -82,10 +91,35 @@ function showSlide(nextIndex, userAction = false) {
   clearTimeout(timer);
   index = (nextIndex + slides.length) % slides.length;
   const slide = slides[index];
+  const requestId = ++imageRequestId;
+  const sources = [...new Set([slide.url, slide.fallbackUrl].filter(Boolean))];
+  let sourceIndex = 0;
+  let loadTimeout;
   photo.classList.remove("ready");
-  photo.onload = () => photo.classList.add("ready");
-  photo.onerror = () => showError("Không tải được ảnh này. Đang chuyển sang ảnh tiếp theo…");
-  photo.src = slide.url;
+  const loadSource = () => {
+    if (requestId !== imageRequestId) return;
+    clearTimeout(loadTimeout);
+    photo.src = sources[sourceIndex];
+    loadTimeout = setTimeout(handleLoadError, 15000);
+  };
+  const handleLoadError = () => {
+    if (requestId !== imageRequestId) return;
+    clearTimeout(loadTimeout);
+    sourceIndex += 1;
+    if (sourceIndex < sources.length) {
+      loadSource();
+      return;
+    }
+    showError("Không tải được ảnh này. Đang chuyển sang ảnh tiếp theo…");
+    timer = setTimeout(() => showSlide(index + 1), 800);
+  };
+  photo.onload = () => {
+    if (requestId !== imageRequestId) return;
+    clearTimeout(loadTimeout);
+    photo.classList.add("ready");
+    if (playing) timer = setTimeout(() => showSlide(index + 1), Number(config.slideDuration) || 6000);
+  };
+  photo.onerror = handleLoadError;
   photo.alt = `Ảnh ${slide.name}`;
   $("#captionTitle").innerHTML = slide.name.replace(/\s+(?=\S+$)/, "<br>");
   $("#captionMeta").textContent = slide.date || "Một album nhỏ đầy yêu thương";
@@ -94,7 +128,7 @@ function showSlide(nextIndex, userAction = false) {
   updateProgress();
   updateSocial();
   preload(slides[(index + 1) % slides.length]?.url);
-  if (playing) timer = setTimeout(() => showSlide(index + 1), Number(config.slideDuration) || 6000);
+  loadSource();
   if (userAction && navigator.vibrate) navigator.vibrate(8);
 }
 
