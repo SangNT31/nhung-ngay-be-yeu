@@ -1,4 +1,4 @@
-const VERSION = "v6";
+const VERSION = "v7";
 const STATIC_CACHE = `baby-album-static-${VERSION}`;
 const IMAGE_CACHE = `baby-album-images-${VERSION}`;
 const MAX_CACHED_IMAGES = 60;

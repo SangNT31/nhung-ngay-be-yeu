@@ -9,8 +9,10 @@ const $ = (selector) => document.querySelector(selector);
 const photo = $("#photo");
 const video = $("#video");
 const viewer = $("#viewer");
+const slideFrame = $(".slide-frame");
 const playButton = $("#playButton");
 const musicButton = $("#musicButton");
+const soundPrompt = $("#soundPrompt");
 const progress = $("#progress");
 let slides = [];
 let index = 0;
@@ -23,31 +25,40 @@ let reactions = loadReactions();
 let audioContext;
 let musicGain;
 let musicTimer;
-let musicStarted = false;
 let musicPlaying = false;
+let trackIndex = 0;
 
-const melody = [
-  [523.25, 0], [659.25, .5], [783.99, 1], [659.25, 1.5],
-  [587.33, 2], [698.46, 2.5], [880, 3], [698.46, 3.5],
-  [659.25, 4], [783.99, 4.5], [1046.5, 5], [783.99, 5.5],
-  [587.33, 6], [659.25, 6.5], [523.25, 7], [392, 7.5],
+const tracks = [
+  { name: "Giấc mơ kẹo ngọt", tempo: .5, notes: [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 1046.5, 783.99, 587.33, 659.25, 523.25, 392] },
+  { name: "Vườn sao nhỏ", tempo: .56, notes: [392, 493.88, 587.33, 659.25, 587.33, 493.88, 440, 523.25, 659.25, 783.99, 659.25, 523.25, 493.88, 440, 392, 329.63] },
+  { name: "Ngày nắng dịu dàng", tempo: .46, notes: [440, 554.37, 659.25, 739.99, 659.25, 554.37, 493.88, 587.33, 698.46, 880, 698.46, 587.33, 554.37, 493.88, 440, 369.99] },
 ];
 
-function scheduleMelody() {
+function scheduleNote(frequency, startAt, duration, type, volume) {
+  const oscillator = audioContext.createOscillator();
+  const noteGain = audioContext.createGain();
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  noteGain.gain.setValueAtTime(0, startAt);
+  noteGain.gain.linearRampToValueAtTime(volume, startAt + .025);
+  noteGain.gain.exponentialRampToValueAtTime(.001, startAt + duration);
+  oscillator.connect(noteGain).connect(musicGain);
+  oscillator.start(startAt);
+  oscillator.stop(startAt + duration + .04);
+}
+
+function scheduleTrack() {
   if (!audioContext || !musicGain) return;
+  const track = tracks[trackIndex % tracks.length];
   const startAt = audioContext.currentTime + .03;
-  melody.forEach(([frequency, offset], noteIndex) => {
-    const oscillator = audioContext.createOscillator();
-    const noteGain = audioContext.createGain();
-    oscillator.type = noteIndex % 4 === 0 ? "sine" : "triangle";
-    oscillator.frequency.value = frequency;
-    noteGain.gain.setValueAtTime(0, startAt + offset);
-    noteGain.gain.linearRampToValueAtTime(.24, startAt + offset + .025);
-    noteGain.gain.exponentialRampToValueAtTime(.001, startAt + offset + .42);
-    oscillator.connect(noteGain).connect(musicGain);
-    oscillator.start(startAt + offset);
-    oscillator.stop(startAt + offset + .45);
+  track.notes.forEach((frequency, noteIndex) => {
+    const noteAt = startAt + noteIndex * track.tempo;
+    scheduleNote(frequency, noteAt, track.tempo * .86, noteIndex % 4 === 0 ? "sine" : "triangle", .2);
+    if (noteIndex % 4 === 0) scheduleNote(frequency / 2, noteAt, track.tempo * 3.2, "sine", .055);
   });
+  musicButton.title = `Đang phát: ${track.name}`;
+  trackIndex = (trackIndex + 1) % tracks.length;
+  musicTimer = setTimeout(scheduleTrack, track.notes.length * track.tempo * 1000);
 }
 
 function updateMusicButton() {
@@ -71,15 +82,13 @@ async function startMusic({ silentFailure = false } = {}) {
     musicGain.gain.cancelScheduledValues(audioContext.currentTime);
     musicGain.gain.setValueAtTime(.42, audioContext.currentTime);
     musicPlaying = true;
+    soundPrompt.hidden = true;
     updateMusicButton();
-    if (!musicStarted) {
-      musicStarted = true;
-      scheduleMelody();
-      musicTimer = setInterval(scheduleMelody, 8000);
-    }
+    if (!musicTimer) scheduleTrack();
   } catch {
     musicPlaying = false;
     updateMusicButton();
+    soundPrompt.hidden = false;
     if (!silentFailure) showError("Trình duyệt đang chặn tự phát nhạc. Hãy chạm nút nốt nhạc để bật.");
   }
 }
@@ -91,9 +100,8 @@ function stopMusic() {
     const contextToClose = audioContext;
     setTimeout(() => contextToClose.close(), 140);
   }
-  clearInterval(musicTimer);
+  clearTimeout(musicTimer);
   musicTimer = undefined;
-  musicStarted = false;
   audioContext = undefined;
   musicGain = undefined;
   musicPlaying = false;
@@ -199,14 +207,15 @@ function showSlide(nextIndex, userAction = false) {
   const requestId = ++imageRequestId;
   let loadTimeout;
 
+  slideFrame.classList.add("media-loading");
   photo.onload = null;
   photo.onerror = null;
   photo.classList.remove("ready");
   video.pause();
-  video.onloadeddata = null;
+  video.oncanplay = null;
   video.onerror = null;
   video.onended = null;
-  video.classList.remove("active");
+  video.classList.remove("active", "ready");
   video.removeAttribute("src");
   video.removeAttribute("poster");
   video.load();
@@ -221,6 +230,7 @@ function showSlide(nextIndex, userAction = false) {
   const handleMediaError = (label) => {
     if (requestId !== imageRequestId) return;
     clearTimeout(loadTimeout);
+    slideFrame.classList.remove("media-loading");
     showError(`Không tải được ${label} này. Đang chuyển sang mục tiếp theo…`);
     timer = setTimeout(() => showSlide(index + 1), 800);
   };
@@ -230,9 +240,11 @@ function showSlide(nextIndex, userAction = false) {
     video.muted = true;
     video.poster = slide.poster || "";
     video.src = slide.url;
-    video.onloadeddata = () => {
+    video.oncanplay = () => {
       if (requestId !== imageRequestId) return;
       clearTimeout(loadTimeout);
+      slideFrame.classList.remove("media-loading");
+      video.classList.add("ready");
       if (playing) video.play().catch(() => showError("Chạm nút phát trên video để bắt đầu xem."));
     };
     video.onerror = () => handleMediaError("video");
@@ -257,6 +269,7 @@ function showSlide(nextIndex, userAction = false) {
     photo.onload = () => {
       if (requestId !== imageRequestId) return;
       clearTimeout(loadTimeout);
+      slideFrame.classList.remove("media-loading");
       photo.classList.add("ready");
       if (playing) timer = setTimeout(() => showSlide(index + 1), Number(config.slideDuration) || 6000);
     };
@@ -359,6 +372,7 @@ $("#commentForm").addEventListener("submit", (event) => {
 });
 playButton.addEventListener("click", togglePlay);
 musicButton.addEventListener("click", toggleMusic);
+soundPrompt.addEventListener("click", () => startMusic());
 document.addEventListener("pointerdown", startMusicOnFirstInteraction);
 document.addEventListener("keydown", startMusicOnFirstInteraction);
 $("#fullscreenButton").addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.());

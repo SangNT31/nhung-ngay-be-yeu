@@ -19,7 +19,7 @@ export default function AlbumPage() {
         <div className="slide-frame">
           <div className="loading" id="loading"><span></span><span></span><span></span></div>
           <img id="photo" alt="" draggable="false" decoding="async" fetchPriority="high" />
-          <video id="video" controls playsInline muted preload="metadata" aria-label="Video trong album"></video>
+          <video id="video" controls playsInline muted preload="auto" aria-label="Video trong album"></video>
           <div className="shade"></div>
           <div className="caption">
             <p className="eyebrow" id="eyebrow">KHOẢNH KHẮC CỦA CON</p>
@@ -49,6 +49,8 @@ export default function AlbumPage() {
         <p className="counter"><span id="currentIndex">01</span><span>/</span><span id="totalCount">03</span></p>
       </footer>
     </main>
+
+    <button className="sound-prompt" id="soundPrompt" type="button" hidden><span aria-hidden="true">♫</span>Bật trải nghiệm có nhạc</button>
 
     <div className="drawer-backdrop" id="drawerBackdrop"></div>
     <aside className="comment-drawer" id="commentDrawer" aria-hidden="true" aria-labelledby="commentHeading">

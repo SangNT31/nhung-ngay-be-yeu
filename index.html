@@ -33,7 +33,7 @@
         <div class="slide-frame">
           <div class="loading" id="loading"><span></span><span></span><span></span></div>
           <img id="photo" alt="" draggable="false" decoding="async" fetchpriority="high" />
-          <video id="video" controls playsinline muted preload="metadata" aria-label="Video trong album"></video>
+          <video id="video" controls playsinline muted preload="auto" aria-label="Video trong album"></video>
           <div class="shade"></div>
           <div class="caption">
             <p class="eyebrow" id="eyebrow">KHOẢNH KHẮC CỦA CON</p>
@@ -70,6 +70,7 @@
         <p class="counter"><span id="currentIndex">01</span><span>/</span><span id="totalCount">03</span></p>
       </footer>
     </main>
+    <button class="sound-prompt" id="soundPrompt" type="button" hidden><span aria-hidden="true">♫</span>Bật trải nghiệm có nhạc</button>
     <div class="drawer-backdrop" id="drawerBackdrop"></div>
     <aside class="comment-drawer" id="commentDrawer" aria-hidden="true" aria-labelledby="commentHeading">
       <header class="drawer-header">

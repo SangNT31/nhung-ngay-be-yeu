@@ -57,10 +57,14 @@ button { color: inherit; }
   border-radius: clamp(20px, 3vw, 36px); background: #ded7ce;
   box-shadow: 0 22px 70px rgba(54, 43, 32, .13);
 }
-#photo { position: absolute; inset: 0; width: 100%; height: 100%; max-width: 100%; max-height: 100%; display: block; object-fit: cover; object-position: center; opacity: 0; transform: scale(1.025); transition: opacity .7s ease, transform 1.2s var(--ease); }
-#photo.ready { opacity: 1; transform: scale(1); }
-#video { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; max-width: 100%; max-height: 100%; display: none; object-fit: contain; background: #171512; }
+#photo { position: absolute; inset: 0; width: 100%; height: 100%; max-width: 100%; max-height: 100%; display: block; object-fit: cover; object-position: center; opacity: 0; filter: blur(7px); transform: scale(1.045); transition: opacity .85s ease, filter .9s ease, transform 1.5s var(--ease); }
+#photo.ready { opacity: 1; filter: blur(0); transform: scale(1); }
+#video { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; max-width: 100%; max-height: 100%; display: none; object-fit: contain; opacity: 0; background: #171512; transition: opacity .65s ease; }
 #video.active { display: block; }
+#video.ready { opacity: 1; }
+.slide-frame::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.2) 48%, transparent 62%); transform: translateX(-100%); }
+.slide-frame.media-loading::after { opacity: 1; animation: media-shimmer 1.35s ease-in-out infinite; }
+@keyframes media-shimmer { to { transform: translateX(100%); } }
 .shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, transparent 44%, rgba(20,16,13,.64) 100%); }
 .caption { position: absolute; left: clamp(22px, 5vw, 72px); right: 24px; bottom: clamp(28px, 7vh, 72px); color: #fff; }
 .eyebrow { margin: 0 0 11px; font-size: 10px; font-weight: 700; letter-spacing: .2em; opacity: .75; }
@@ -95,6 +99,10 @@ button { color: inherit; }
 .counter span:nth-child(2), #totalCount { opacity: .4; }
 .error-toast { position: fixed; z-index: 20; left: 50%; bottom: 82px; max-width: min(90vw, 520px); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; border-radius: 12px; padding: 11px 15px; color: #fff; background: #7b3d35; font-size: 12px; transition: .3s ease; }
 .error-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.sound-prompt { position: fixed; z-index: 25; left: 50%; bottom: max(26px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 9px; transform: translateX(-50%); border: 1px solid rgba(255,255,255,.45); border-radius: 999px; padding: 12px 18px; color: #fff; background: rgba(37,35,31,.86); backdrop-filter: blur(14px); box-shadow: 0 12px 35px rgba(30,24,20,.22); cursor: pointer; font-size: 12px; font-weight: 650; white-space: nowrap; animation: prompt-in .5s var(--ease); }
+.sound-prompt[hidden] { display: none; }
+.sound-prompt span { color: #f1a7aa; font-size: 18px; }
+@keyframes prompt-in { from { opacity: 0; transform: translate(-50%, 14px); } }
 
 .drawer-backdrop { position: fixed; inset: 0; z-index: 29; background: rgba(28,23,19,.3); opacity: 0; visibility: hidden; transition: .3s ease; }
 .drawer-backdrop.open { opacity: 1; visibility: visible; }
