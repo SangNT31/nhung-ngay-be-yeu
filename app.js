@@ -7,6 +7,7 @@ const demoSlides = [
 
 const $ = (selector) => document.querySelector(selector);
 const photo = $("#photo");
+const video = $("#video");
 const viewer = $("#viewer");
 const playButton = $("#playButton");
 const musicButton = $("#musicButton");
@@ -143,20 +144,22 @@ function driveThumbnailUrl(thumbnailLink, originalWidth) {
 
 async function loadDriveSlides() {
   if (!config.googleDriveApiKey || !config.googleDriveFolderId) return demoSlides;
-  const query = `'${config.googleDriveFolderId}' in parents and mimeType contains 'image/' and trashed = false`;
-  const params = new URLSearchParams({ q: query, fields: "files(id,name,imageMediaMetadata,createdTime,thumbnailLink)", orderBy: "createdTime desc", pageSize: "100", key: config.googleDriveApiKey });
+  const query = `'${config.googleDriveFolderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed = false`;
+  const params = new URLSearchParams({ q: query, fields: "files(id,name,mimeType,imageMediaMetadata,videoMediaMetadata,createdTime,thumbnailLink)", orderBy: "createdTime desc", pageSize: "100", key: config.googleDriveApiKey });
   const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, { signal: AbortSignal.timeout(12000) });
   if (!response.ok) throw new Error("Không thể đọc album. Hãy kiểm tra API key và quyền chia sẻ thư mục Drive.");
   const data = await response.json();
-  if (!data.files?.length) throw new Error("Thư mục Drive chưa có ảnh hoặc ảnh chưa được chia sẻ công khai.");
+  if (!data.files?.length) throw new Error("Thư mục Drive chưa có ảnh/video hoặc chưa được chia sẻ công khai.");
   $("#demoBadge").hidden = true;
   return data.files
     .sort((a, b) => new Date(b.createdTime || 0) - new Date(a.createdTime || 0))
     .map((file, i) => ({
     id: file.id,
     name: file.name.replace(/\.[^.]+$/, ""),
-    url: driveThumbnailUrl(file.thumbnailLink, file.imageMediaMetadata?.width) || driveMediaUrl(file.id),
-    fallbackUrl: driveMediaUrl(file.id),
+    type: file.mimeType?.startsWith("video/") ? "video" : "image",
+    url: file.mimeType?.startsWith("video/") ? driveMediaUrl(file.id) : driveThumbnailUrl(file.thumbnailLink, file.imageMediaMetadata?.width) || driveMediaUrl(file.id),
+    fallbackUrl: file.mimeType?.startsWith("video/") ? "" : driveMediaUrl(file.id),
+    poster: file.mimeType?.startsWith("video/") ? driveThumbnailUrl(file.thumbnailLink, file.videoMediaMetadata?.width) : "",
     color: ["#c89d88", "#8fa49a", "#aa98b1", "#bea96f"][i % 4],
     date: file.createdTime ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "long" }).format(new Date(file.createdTime)) : "",
   }));
@@ -167,7 +170,7 @@ function buildProgress() {
   slides.forEach((slide, i) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.ariaLabel = `Xem ảnh ${i + 1}: ${slide.name}`;
+    button.ariaLabel = `Xem ${slide.type === "video" ? "video" : "ảnh"} ${i + 1}: ${slide.name}`;
     button.addEventListener("click", () => showSlide(i, true));
     progress.append(button);
   });
@@ -194,43 +197,76 @@ function showSlide(nextIndex, userAction = false) {
   index = (nextIndex + slides.length) % slides.length;
   const slide = slides[index];
   const requestId = ++imageRequestId;
-  const sources = [...new Set([slide.url, slide.fallbackUrl].filter(Boolean))];
-  let sourceIndex = 0;
   let loadTimeout;
+
+  photo.onload = null;
+  photo.onerror = null;
   photo.classList.remove("ready");
-  const loadSource = () => {
-    if (requestId !== imageRequestId) return;
-    clearTimeout(loadTimeout);
-    photo.src = sources[sourceIndex];
-    loadTimeout = setTimeout(handleLoadError, 15000);
-  };
-  const handleLoadError = () => {
-    if (requestId !== imageRequestId) return;
-    clearTimeout(loadTimeout);
-    sourceIndex += 1;
-    if (sourceIndex < sources.length) {
-      loadSource();
-      return;
-    }
-    showError("Không tải được ảnh này. Đang chuyển sang ảnh tiếp theo…");
-    timer = setTimeout(() => showSlide(index + 1), 800);
-  };
-  photo.onload = () => {
-    if (requestId !== imageRequestId) return;
-    clearTimeout(loadTimeout);
-    photo.classList.add("ready");
-    if (playing) timer = setTimeout(() => showSlide(index + 1), Number(config.slideDuration) || 6000);
-  };
-  photo.onerror = handleLoadError;
-  photo.alt = `Ảnh ${slide.name}`;
+  video.pause();
+  video.onloadeddata = null;
+  video.onerror = null;
+  video.onended = null;
+  video.classList.remove("active");
+  video.removeAttribute("src");
+  video.removeAttribute("poster");
+  video.load();
+
   $("#captionTitle").innerHTML = slide.name.replace(/\s+(?=\S+$)/, "<br>");
-  $("#captionMeta").textContent = slide.date || "Một album nhỏ đầy yêu thương";
+  $("#captionMeta").textContent = slide.type === "video" ? `${slide.date || "Một video nhỏ đầy yêu thương"} • Chạm biểu tượng loa để bật tiếng` : slide.date || "Một album nhỏ đầy yêu thương";
   $("#currentIndex").textContent = String(index + 1).padStart(2, "0");
   $("#ambient").style.background = slide.color;
   updateProgress();
   updateSocial();
-  preload(slides[(index + 1) % slides.length]?.url);
-  loadSource();
+
+  const handleMediaError = (label) => {
+    if (requestId !== imageRequestId) return;
+    clearTimeout(loadTimeout);
+    showError(`Không tải được ${label} này. Đang chuyển sang mục tiếp theo…`);
+    timer = setTimeout(() => showSlide(index + 1), 800);
+  };
+
+  if (slide.type === "video") {
+    video.classList.add("active");
+    video.muted = true;
+    video.poster = slide.poster || "";
+    video.src = slide.url;
+    video.onloadeddata = () => {
+      if (requestId !== imageRequestId) return;
+      clearTimeout(loadTimeout);
+      if (playing) video.play().catch(() => showError("Chạm nút phát trên video để bắt đầu xem."));
+    };
+    video.onerror = () => handleMediaError("video");
+    video.onended = () => { if (playing && requestId === imageRequestId) showSlide(index + 1); };
+    loadTimeout = setTimeout(() => handleMediaError("video"), 20000);
+  } else {
+    const sources = [...new Set([slide.url, slide.fallbackUrl].filter(Boolean))];
+    let sourceIndex = 0;
+    const loadSource = () => {
+      if (requestId !== imageRequestId) return;
+      clearTimeout(loadTimeout);
+      photo.src = sources[sourceIndex];
+      loadTimeout = setTimeout(handleImageError, 15000);
+    };
+    const handleImageError = () => {
+      if (requestId !== imageRequestId) return;
+      clearTimeout(loadTimeout);
+      sourceIndex += 1;
+      if (sourceIndex < sources.length) return loadSource();
+      handleMediaError("ảnh");
+    };
+    photo.onload = () => {
+      if (requestId !== imageRequestId) return;
+      clearTimeout(loadTimeout);
+      photo.classList.add("ready");
+      if (playing) timer = setTimeout(() => showSlide(index + 1), Number(config.slideDuration) || 6000);
+    };
+    photo.onerror = handleImageError;
+    photo.alt = `Ảnh ${slide.name}`;
+    loadSource();
+  }
+
+  const nextSlide = slides[(index + 1) % slides.length];
+  if (nextSlide?.type !== "video") preload(nextSlide?.url);
   if (userAction && navigator.vibrate) navigator.vibrate(8);
 }
 
@@ -285,7 +321,12 @@ function togglePlay() {
   playing = !playing;
   playButton.classList.toggle("paused", !playing);
   playButton.ariaLabel = playing ? "Tạm dừng trình chiếu" : "Tiếp tục trình chiếu";
-  showSlide(index);
+  if (slides[index]?.type === "video") {
+    if (playing) video.play().catch(() => showError("Chạm nút phát trên video để tiếp tục xem."));
+    else video.pause();
+  } else {
+    showSlide(index);
+  }
 }
 function showError(message) {
   const toast = $("#errorToast"); toast.textContent = message; toast.classList.add("show");
@@ -332,7 +373,15 @@ viewer.addEventListener("touchend", (event) => {
   const delta = event.changedTouches[0].clientX - touchStartX;
   if (Math.abs(delta) > 45) showSlide(index + (delta < 0 ? 1 : -1), true);
 }, { passive: true });
-document.addEventListener("visibilitychange", () => { clearTimeout(timer); if (!document.hidden && playing) showSlide(index); });
+document.addEventListener("visibilitychange", () => {
+  clearTimeout(timer);
+  if (slides[index]?.type === "video") {
+    if (document.hidden) video.pause();
+    else if (playing) video.play().catch(() => {});
+  } else if (!document.hidden && playing) {
+    showSlide(index);
+  }
+});
 
 (async function init() {
   registerImageCache();

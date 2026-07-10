@@ -19,6 +19,7 @@ export default function AlbumPage() {
         <div className="slide-frame">
           <div className="loading" id="loading"><span></span><span></span><span></span></div>
           <img id="photo" alt="" draggable="false" decoding="async" fetchPriority="high" />
+          <video id="video" controls playsInline muted preload="metadata" aria-label="Video trong album"></video>
           <div className="shade"></div>
           <div className="caption">
             <p className="eyebrow" id="eyebrow">KHOẢNH KHẮC CỦA CON</p>
