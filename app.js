@@ -1,7 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-import { getDatabase, limitToLast, onValue, orderByChild, push, query, ref, remove, serverTimestamp, set } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
-
 const config = window.ALBUM_CONFIG || {};
 const demoSlides = [
   { id: "demo-1", name: "Mỗi ngày bên con là một món quà", url: "assets/demo-1.svg", color: "#d8a28e" },
@@ -42,6 +38,20 @@ let firebaseAuthPromise;
 let unsubscribeComments;
 let lastCommentAt = 0;
 let sharedCommentsEnabled = false;
+let galleryRendered = false;
+let initializeApp;
+let getAuth;
+let signInAnonymously;
+let getDatabase;
+let limitToLast;
+let onValue;
+let orderByChild;
+let push;
+let query;
+let ref;
+let remove;
+let serverTimestamp;
+let set;
 
 const tracks = [
   { name: "Giấc mơ kẹo ngọt", tempo: .5, notes: [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 1046.5, 783.99, 587.33, 659.25, 523.25, 392] },
@@ -149,6 +159,14 @@ function currentReaction() {
 async function initializeSharedComments() {
   if (!config.firebase?.databaseURL || !config.firebase?.apiKey) return;
   try {
+    const [appModule, authModule, databaseModule] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js"),
+    ]);
+    ({ initializeApp } = appModule);
+    ({ getAuth, signInAnonymously } = authModule);
+    ({ getDatabase, limitToLast, onValue, orderByChild, push, query, ref, remove, serverTimestamp, set } = databaseModule);
     const firebaseApp = initializeApp(config.firebase);
     firebaseDatabase = getDatabase(firebaseApp);
     firebaseAuthPromise = signInAnonymously(getAuth(firebaseApp)).then(({ user }) => {
@@ -327,6 +345,10 @@ function renderGallery() {
 function openGallery() {
   clearTimeout(timer);
   video.pause();
+  if (!galleryRendered) {
+    renderGallery();
+    galleryRendered = true;
+  }
   galleryPanel.classList.add("open");
   galleryPanel.setAttribute("aria-hidden", "false");
   galleryTimeline.scrollTop = 0;
@@ -434,6 +456,8 @@ function showSlide(nextIndex, userAction = false) {
       outgoingPhoto.classList.add("leaving");
       photo = incomingPhoto;
       photoBuffer = outgoingPhoto;
+      const nextSlide = slides[(index + 1) % slides.length];
+      if (nextSlide?.type !== "video") preload(nextSlide?.url);
       setTimeout(() => {
         if (requestId !== imageRequestId) return;
         outgoingPhoto.classList.remove("ready", "leaving");
@@ -445,8 +469,6 @@ function showSlide(nextIndex, userAction = false) {
     loadSource();
   }
 
-  const nextSlide = slides[(index + 1) % slides.length];
-  if (nextSlide?.type !== "video") preload(nextSlide?.url);
   if (userAction && navigator.vibrate) navigator.vibrate(8);
 }
 
@@ -613,12 +635,12 @@ document.addEventListener("visibilitychange", () => {
   try { slides = await loadDriveSlides(); }
   catch (error) { slides = demoSlides; showError(error.message); }
   buildProgress();
-  renderGallery();
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   if (isIos && !isStandalone) installButton.hidden = false;
   const sharedMediaId = new URLSearchParams(window.location.search).get("media");
   const sharedIndex = sharedMediaId ? slides.findIndex((slide) => slide.id === sharedMediaId) : -1;
   showSlide(sharedIndex >= 0 ? sharedIndex : 0);
-  initializeSharedComments();
+  if ("requestIdleCallback" in window) requestIdleCallback(initializeSharedComments, { timeout: 3500 });
+  else setTimeout(initializeSharedComments, 1800);
 })();

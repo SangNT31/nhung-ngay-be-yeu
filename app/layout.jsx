@@ -16,6 +16,7 @@ export default function RootLayout({ children }) {
   return <html lang="vi">
     <head>
       <link rel="preconnect" href="https://www.googleapis.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://lh3.googleusercontent.com" crossOrigin="anonymous" />
       <link rel="manifest" href="/manifest.webmanifest" />
       <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     </head>
