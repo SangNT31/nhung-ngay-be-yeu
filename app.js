@@ -34,14 +34,14 @@ const melody = [
 
 function scheduleMelody() {
   if (!audioContext || !musicGain) return;
-  const startAt = audioContext.currentTime + .08;
+  const startAt = audioContext.currentTime + .03;
   melody.forEach(([frequency, offset], noteIndex) => {
     const oscillator = audioContext.createOscillator();
     const noteGain = audioContext.createGain();
     oscillator.type = noteIndex % 4 === 0 ? "sine" : "triangle";
     oscillator.frequency.value = frequency;
     noteGain.gain.setValueAtTime(0, startAt + offset);
-    noteGain.gain.linearRampToValueAtTime(.16, startAt + offset + .025);
+    noteGain.gain.linearRampToValueAtTime(.24, startAt + offset + .025);
     noteGain.gain.exponentialRampToValueAtTime(.001, startAt + offset + .42);
     oscillator.connect(noteGain).connect(musicGain);
     oscillator.start(startAt + offset);
@@ -56,31 +56,45 @@ function updateMusicButton() {
 }
 
 async function startMusic() {
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
-  if (!audioContext) {
-    audioContext = new AudioContext();
-    musicGain = audioContext.createGain();
-    musicGain.gain.value = 0;
-    musicGain.connect(audioContext.destination);
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) throw new Error("Trình duyệt không hỗ trợ Web Audio");
+    if (!audioContext) {
+      audioContext = new AudioContext();
+      musicGain = audioContext.createGain();
+      musicGain.gain.value = .42;
+      musicGain.connect(audioContext.destination);
+    }
+    await audioContext.resume();
+    if (audioContext.state !== "running") throw new Error("Trình duyệt đang chặn âm thanh");
+    musicGain.gain.cancelScheduledValues(audioContext.currentTime);
+    musicGain.gain.setValueAtTime(.42, audioContext.currentTime);
+    musicPlaying = true;
+    updateMusicButton();
+    if (!musicStarted) {
+      musicStarted = true;
+      scheduleMelody();
+      musicTimer = setInterval(scheduleMelody, 8000);
+    }
+  } catch {
+    musicPlaying = false;
+    updateMusicButton();
+    showError("Không thể phát nhạc. Hãy bật âm lượng thiết bị rồi chạm lại nút nốt nhạc.");
   }
-  await audioContext.resume();
-  if (!musicStarted) {
-    musicStarted = true;
-    scheduleMelody();
-    musicTimer = setInterval(scheduleMelody, 8000);
-  }
-  musicPlaying = true;
-  musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-  musicGain.gain.setTargetAtTime(.22, audioContext.currentTime, .08);
-  updateMusicButton();
 }
 
 function stopMusic() {
   if (audioContext && musicGain) {
     musicGain.gain.cancelScheduledValues(audioContext.currentTime);
     musicGain.gain.setTargetAtTime(0, audioContext.currentTime, .04);
+    const contextToClose = audioContext;
+    setTimeout(() => contextToClose.close(), 140);
   }
+  clearInterval(musicTimer);
+  musicTimer = undefined;
+  musicStarted = false;
+  audioContext = undefined;
+  musicGain = undefined;
   musicPlaying = false;
   updateMusicButton();
 }

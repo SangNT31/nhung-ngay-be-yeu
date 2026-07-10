@@ -1,4 +1,4 @@
-const VERSION = "v3";
+const VERSION = "v4";
 const STATIC_CACHE = `baby-album-static-${VERSION}`;
 const IMAGE_CACHE = `baby-album-images-${VERSION}`;
 const MAX_CACHED_IMAGES = 60;
@@ -33,18 +33,17 @@ async function cacheFirstImage(request) {
   return response;
 }
 
-async function staleWhileRevalidate(request) {
+async function networkFirst(request) {
   const cache = await caches.open(STATIC_CACHE);
-  const cached = await cache.match(request);
-  const networkResponse = fetch(request).then(async (response) => {
+  try {
+    const response = await fetch(request);
     if (response.ok) await cache.put(request, response.clone());
     return response;
-  });
-  if (cached) {
-    networkResponse.catch(() => {});
-    return cached;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    throw new Error("Không có kết nối và tài nguyên chưa được cache");
   }
-  return networkResponse;
 }
 
 self.addEventListener("fetch", (event) => {
@@ -61,6 +60,6 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.origin === self.location.origin && ["document", "script", "style", "font"].includes(request.destination)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(networkFirst(request));
   }
 });
