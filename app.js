@@ -56,7 +56,7 @@ function updateMusicButton() {
   musicButton.setAttribute("aria-label", musicPlaying ? "Tắt nhạc nền" : "Bật nhạc nền");
 }
 
-async function startMusic() {
+async function startMusic({ silentFailure = false } = {}) {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) throw new Error("Trình duyệt không hỗ trợ Web Audio");
@@ -80,7 +80,7 @@ async function startMusic() {
   } catch {
     musicPlaying = false;
     updateMusicButton();
-    showError("Không thể phát nhạc. Hãy bật âm lượng thiết bị rồi chạm lại nút nốt nhạc.");
+    if (!silentFailure) showError("Trình duyệt đang chặn tự phát nhạc. Hãy chạm nút nốt nhạc để bật.");
   }
 }
 
@@ -385,6 +385,7 @@ document.addEventListener("visibilitychange", () => {
 
 (async function init() {
   registerImageCache();
+  startMusic({ silentFailure: true });
   document.querySelector(".brand span:last-child").textContent = config.albumTitle || "Những ngày bé xinh";
   try { slides = await loadDriveSlides(); }
   catch (error) { slides = demoSlides; showError(error.message); }
