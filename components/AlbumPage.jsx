@@ -8,7 +8,10 @@ export default function AlbumPage() {
           <span className="brand-mark" aria-hidden="true"><Icon><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" /></Icon></span>
           <span>Những ngày bé xinh</span>
         </a>
-        <button className="icon-button" id="fullscreenButton" aria-label="Xem toàn màn hình" title="Toàn màn hình"><Icon><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></Icon></button>
+        <div className="topbar-actions">
+          <button className="icon-button music-button" id="musicButton" aria-label="Bật nhạc nền" aria-pressed="false" title="Nhạc nền"><Icon><path d="M9 18V5l10-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="16" cy="16" r="3" /></Icon></button>
+          <button className="icon-button" id="fullscreenButton" aria-label="Xem toàn màn hình" title="Toàn màn hình"><Icon><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></Icon></button>
+        </div>
       </header>
 
       <section className="viewer" id="viewer" aria-label="Trình chiếu ảnh">
