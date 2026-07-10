@@ -39,6 +39,7 @@ let unsubscribeComments;
 let unsubscribeLikes;
 let lastCommentAt = 0;
 let sharedCommentsEnabled = false;
+let firebaseInitializationStarted = false;
 let galleryRendered = false;
 let initializeApp;
 let getAuth;
@@ -158,6 +159,8 @@ function currentReaction() {
 }
 
 async function initializeSharedComments() {
+  if (firebaseInitializationStarted) return;
+  firebaseInitializationStarted = true;
   if (!config.firebase?.databaseURL || !config.firebase?.apiKey) return;
   try {
     const [appModule, authModule, databaseModule] = await Promise.all([
@@ -170,13 +173,15 @@ async function initializeSharedComments() {
     ({ getDatabase, limitToLast, onValue, orderByChild, push, query, ref, remove, serverTimestamp, set } = databaseModule);
     const firebaseApp = initializeApp(config.firebase);
     firebaseDatabase = getDatabase(firebaseApp);
+    sharedCommentsEnabled = true;
+    subscribeToCurrentSocial();
     firebaseAuthPromise = signInAnonymously(getAuth(firebaseApp)).then(({ user }) => {
       firebaseUser = user;
+      subscribeToCurrentLikes();
+      if ($("#commentDrawer").classList.contains("open")) renderComments();
       return user;
     });
     await firebaseAuthPromise;
-    sharedCommentsEnabled = true;
-    subscribeToCurrentSocial();
   } catch {
     sharedCommentsEnabled = false;
     showError("Chưa kết nối được bình luận chung. Bình luận đang được lưu trên thiết bị này.");
@@ -204,11 +209,11 @@ function subscribeToCurrentComments() {
 function subscribeToCurrentLikes() {
   unsubscribeLikes?.();
   unsubscribeLikes = undefined;
-  if (!sharedCommentsEnabled || !firebaseDatabase || !slides[index] || !firebaseUser) return;
+  if (!sharedCommentsEnabled || !firebaseDatabase || !slides[index]) return;
   const mediaId = slides[index].id;
   unsubscribeLikes = onValue(ref(firebaseDatabase, `likes/${mediaId}`), (snapshot) => {
     if (!reactions[mediaId]) reactions[mediaId] = { loved: false, comments: [] };
-    reactions[mediaId].loved = snapshot.hasChild(firebaseUser.uid);
+    reactions[mediaId].loved = firebaseUser ? snapshot.hasChild(firebaseUser.uid) : false;
     reactions[mediaId].heartCount = snapshot.size;
     if (slides[index]?.id === mediaId) updateSocial();
   }, () => {
@@ -441,6 +446,7 @@ function showSlide(nextIndex, userAction = false) {
       clearTimeout(loadTimeout);
       slideFrame.classList.remove("media-loading");
       video.classList.add("ready");
+      initializeSharedComments();
       photo.classList.remove("ready", "leaving");
       photoBuffer.classList.remove("ready", "leaving");
       if (playing) video.play().catch(() => showError("Chạm nút phát trên video để bắt đầu xem."));
@@ -474,6 +480,7 @@ function showSlide(nextIndex, userAction = false) {
       if (requestId !== imageRequestId) return;
       slideFrame.classList.remove("media-loading");
       incomingPhoto.classList.add("ready");
+      initializeSharedComments();
       outgoingPhoto.classList.add("leaving");
       photo = incomingPhoto;
       photoBuffer = outgoingPhoto;
@@ -495,9 +502,10 @@ function showSlide(nextIndex, userAction = false) {
 
 async function toggleHeart() {
   const reaction = currentReaction();
-  if (sharedCommentsEnabled && firebaseDatabase && firebaseUser) {
-    const heartRef = ref(firebaseDatabase, `likes/${slides[index].id}/${firebaseUser.uid}`);
+  if (sharedCommentsEnabled && firebaseDatabase) {
     try {
+      const user = firebaseUser || await firebaseAuthPromise;
+      const heartRef = ref(firebaseDatabase, `likes/${slides[index].id}/${user.uid}`);
       if (reaction.loved) await remove(heartRef);
       else await set(heartRef, true);
       if (!reaction.loved && navigator.vibrate) navigator.vibrate([18, 35, 18]);
@@ -674,6 +682,5 @@ document.addEventListener("visibilitychange", () => {
   const sharedMediaId = new URLSearchParams(window.location.search).get("media");
   const sharedIndex = sharedMediaId ? slides.findIndex((slide) => slide.id === sharedMediaId) : -1;
   showSlide(sharedIndex >= 0 ? sharedIndex : 0);
-  if ("requestIdleCallback" in window) requestIdleCallback(initializeSharedComments, { timeout: 3500 });
-  else setTimeout(initializeSharedComments, 1800);
+  setTimeout(initializeSharedComments, 2200);
 })();

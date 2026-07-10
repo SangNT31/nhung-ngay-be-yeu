@@ -17,6 +17,8 @@ export default function RootLayout({ children }) {
     <head>
       <link rel="preconnect" href="https://www.googleapis.com" crossOrigin="anonymous" />
       <link rel="preconnect" href="https://lh3.googleusercontent.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://www.gstatic.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://baby-album-baf4d-default-rtdb.asia-southeast1.firebasedatabase.app" crossOrigin="anonymous" />
       <link rel="manifest" href="/manifest.webmanifest" />
       <link rel="icon" href="/assets/app-icon.svg" type="image/svg+xml" />
     </head>
