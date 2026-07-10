@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f3ee" />
+    <meta name="description" content="Những khoảnh khắc đáng yêu của bé, được lưu giữ từ Google Drive." />
+    <link rel="preconnect" href="https://www.googleapis.com" crossorigin />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Khoảnh khắc của con</title>
+  </head>
+  <body>
+    <main class="app" aria-live="polite">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Về ảnh đầu tiên">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" /></svg>
+          </span>
+          <span>Những ngày bé xinh</span>
+        </a>
+        <button class="icon-button" id="fullscreenButton" aria-label="Xem toàn màn hình" title="Toàn màn hình">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
+        </button>
+      </header>
+
+      <section class="viewer" id="viewer" aria-label="Trình chiếu ảnh">
+        <div class="ambient" id="ambient"></div>
+        <div class="slide-frame">
+          <div class="loading" id="loading"><span></span><span></span><span></span></div>
+          <img id="photo" alt="" draggable="false" />
+          <div class="shade"></div>
+          <div class="caption">
+            <p class="eyebrow" id="eyebrow">KHOẢNH KHẮC CỦA CON</p>
+            <h1 id="captionTitle">Mỗi ngày bên con<br />là một món quà.</h1>
+            <p id="captionMeta">Một album nhỏ đầy yêu thương</p>
+          </div>
+          <p class="demo-badge" id="demoBadge">Ảnh minh hoạ • Xem README để kết nối Drive</p>
+          <div class="social-actions" aria-label="Tương tác với ảnh">
+            <button class="social-button heart-button" id="heartButton" aria-label="Thả tim ảnh này" aria-pressed="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" /></svg>
+              <span id="heartCount">0</span>
+            </button>
+            <button class="social-button" id="commentButton" aria-label="Mở bình luận">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></svg>
+              <span id="commentCount">0</span>
+            </button>
+          </div>
+        </div>
+
+        <button class="nav prev" id="prevButton" aria-label="Ảnh trước">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <button class="nav next" id="nextButton" aria-label="Ảnh tiếp theo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+      </section>
+
+      <footer class="controls">
+        <button class="play-button" id="playButton" aria-label="Tạm dừng trình chiếu">
+          <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14" /></svg>
+          <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z" /></svg>
+        </button>
+        <div class="progress" id="progress" aria-label="Tiến trình album"></div>
+        <p class="counter"><span id="currentIndex">01</span><span>/</span><span id="totalCount">03</span></p>
+      </footer>
+    </main>
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <aside class="comment-drawer" id="commentDrawer" aria-hidden="true" aria-labelledby="commentHeading">
+      <header class="drawer-header">
+        <div>
+          <p class="eyebrow drawer-eyebrow">GÓC YÊU THƯƠNG</p>
+          <h2 id="commentHeading">Bình luận</h2>
+        </div>
+        <button class="icon-button drawer-close" id="closeComments" aria-label="Đóng bình luận">×</button>
+      </header>
+      <div class="comment-list" id="commentList"></div>
+      <form class="comment-form" id="commentForm">
+        <label class="sr-only" for="commentName">Tên của bạn</label>
+        <input id="commentName" maxlength="32" autocomplete="name" placeholder="Tên của bạn" required />
+        <label class="sr-only" for="commentText">Nội dung bình luận</label>
+        <div class="comment-compose">
+          <textarea id="commentText" maxlength="280" rows="1" placeholder="Viết lời yêu thương…" required></textarea>
+          <button type="submit" aria-label="Gửi bình luận">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
+          </button>
+        </div>
+      </form>
+    </aside>
+    <div class="error-toast" id="errorToast" role="alert"></div>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
