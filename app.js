@@ -6,7 +6,8 @@ const demoSlides = [
 ];
 
 const $ = (selector) => document.querySelector(selector);
-const photo = $("#photo");
+let photo = $("#photo");
+let photoBuffer = $("#photoBuffer");
 const video = $("#video");
 const viewer = $("#viewer");
 const slideFrame = $(".slide-frame");
@@ -210,7 +211,8 @@ function showSlide(nextIndex, userAction = false) {
   slideFrame.classList.add("media-loading");
   photo.onload = null;
   photo.onerror = null;
-  photo.classList.remove("ready");
+  photoBuffer.onload = null;
+  photoBuffer.onerror = null;
   video.pause();
   video.oncanplay = null;
   video.onerror = null;
@@ -245,6 +247,8 @@ function showSlide(nextIndex, userAction = false) {
       clearTimeout(loadTimeout);
       slideFrame.classList.remove("media-loading");
       video.classList.add("ready");
+      photo.classList.remove("ready", "leaving");
+      photoBuffer.classList.remove("ready", "leaving");
       if (playing) video.play().catch(() => showError("Chạm nút phát trên video để bắt đầu xem."));
     };
     video.onerror = () => handleMediaError("video");
@@ -252,11 +256,14 @@ function showSlide(nextIndex, userAction = false) {
     loadTimeout = setTimeout(() => handleMediaError("video"), 20000);
   } else {
     const sources = [...new Set([slide.url, slide.fallbackUrl].filter(Boolean))];
+    const incomingPhoto = photoBuffer;
+    const outgoingPhoto = photo;
     let sourceIndex = 0;
+    incomingPhoto.classList.remove("ready", "leaving");
     const loadSource = () => {
       if (requestId !== imageRequestId) return;
       clearTimeout(loadTimeout);
-      photo.src = sources[sourceIndex];
+      incomingPhoto.src = sources[sourceIndex];
       loadTimeout = setTimeout(handleImageError, 15000);
     };
     const handleImageError = () => {
@@ -266,15 +273,24 @@ function showSlide(nextIndex, userAction = false) {
       if (sourceIndex < sources.length) return loadSource();
       handleMediaError("ảnh");
     };
-    photo.onload = () => {
+    incomingPhoto.onload = async () => {
       if (requestId !== imageRequestId) return;
       clearTimeout(loadTimeout);
+      await incomingPhoto.decode?.().catch(() => {});
+      if (requestId !== imageRequestId) return;
       slideFrame.classList.remove("media-loading");
-      photo.classList.add("ready");
+      incomingPhoto.classList.add("ready");
+      outgoingPhoto.classList.add("leaving");
+      photo = incomingPhoto;
+      photoBuffer = outgoingPhoto;
+      setTimeout(() => {
+        if (requestId !== imageRequestId) return;
+        outgoingPhoto.classList.remove("ready", "leaving");
+      }, 1050);
       if (playing) timer = setTimeout(() => showSlide(index + 1), Number(config.slideDuration) || 6000);
     };
-    photo.onerror = handleImageError;
-    photo.alt = `Ảnh ${slide.name}`;
+    incomingPhoto.onerror = handleImageError;
+    incomingPhoto.alt = `Ảnh ${slide.name}`;
     loadSource();
   }
 

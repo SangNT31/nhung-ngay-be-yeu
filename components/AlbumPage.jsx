@@ -18,7 +18,8 @@ export default function AlbumPage() {
         <div className="ambient" id="ambient"></div>
         <div className="slide-frame">
           <div className="loading" id="loading"><span></span><span></span><span></span></div>
-          <img id="photo" alt="" draggable="false" decoding="async" fetchPriority="high" />
+          <img id="photo" className="media-photo ready" alt="" draggable="false" decoding="async" fetchPriority="high" />
+          <img id="photoBuffer" className="media-photo" alt="" draggable="false" decoding="async" />
           <video id="video" controls playsInline muted preload="auto" aria-label="Video trong album"></video>
           <div className="shade"></div>
           <div className="caption">
