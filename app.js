@@ -36,7 +36,7 @@ function driveMediaUrl(id) {
 async function loadDriveSlides() {
   if (!config.googleDriveApiKey || !config.googleDriveFolderId) return demoSlides;
   const query = `'${config.googleDriveFolderId}' in parents and mimeType contains 'image/' and trashed = false`;
-  const params = new URLSearchParams({ q: query, fields: "files(id,name,imageMediaMetadata,createdTime,thumbnailLink)", orderBy: "createdTime", pageSize: "1000", key: config.googleDriveApiKey });
+  const params = new URLSearchParams({ q: query, fields: "files(id,name,imageMediaMetadata,createdTime,thumbnailLink)", orderBy: "createdTime desc", pageSize: "100", key: config.googleDriveApiKey });
   const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`);
   if (!response.ok) throw new Error("Không thể đọc album. Hãy kiểm tra API key và quyền chia sẻ thư mục Drive.");
   const data = await response.json();

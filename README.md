@@ -31,6 +31,7 @@ Dự án đã có workflow `.github/workflows/deploy-pages.yml`. Khi mã nguồn
 
 - Tự động trình chiếu, tạm dừng/tiếp tục, toàn màn hình.
 - Vuốt trái/phải trên điện thoại; phím mũi tên và Space trên desktop.
+- Ảnh mới tải lên Google Drive được hiển thị trước tiên.
 - Thả tim và bình luận riêng cho từng ảnh; dữ liệu được lưu trên trình duyệt hiện tại.
 - Chỉ tải ảnh hiện tại và preload một ảnh tiếp theo.
 - Tạm dừng tải nền khi tab bị ẩn; hỗ trợ `prefers-reduced-motion`.
