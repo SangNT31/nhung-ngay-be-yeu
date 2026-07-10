@@ -1,3 +1,7 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+import { getDatabase, limitToLast, onValue, orderByChild, push, query, ref, remove, serverTimestamp, set } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
 const config = window.ALBUM_CONFIG || {};
 const demoSlides = [
   { id: "demo-1", name: "Mỗi ngày bên con là một món quà", url: "assets/demo-1.svg", color: "#d8a28e" },
@@ -32,6 +36,12 @@ let musicTimer;
 let musicPlaying = false;
 let trackIndex = 0;
 let deferredInstallPrompt;
+let firebaseDatabase;
+let firebaseUser;
+let firebaseAuthPromise;
+let unsubscribeComments;
+let lastCommentAt = 0;
+let sharedCommentsEnabled = false;
 
 const tracks = [
   { name: "Giấc mơ kẹo ngọt", tempo: .5, notes: [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 1046.5, 783.99, 587.33, 659.25, 523.25, 392] },
@@ -134,6 +144,42 @@ function currentReaction() {
   const id = slides[index]?.id;
   if (!reactions[id]) reactions[id] = { loved: false, comments: [] };
   return reactions[id];
+}
+
+async function initializeSharedComments() {
+  if (!config.firebase?.databaseURL || !config.firebase?.apiKey) return;
+  try {
+    const firebaseApp = initializeApp(config.firebase);
+    firebaseDatabase = getDatabase(firebaseApp);
+    firebaseAuthPromise = signInAnonymously(getAuth(firebaseApp)).then(({ user }) => {
+      firebaseUser = user;
+      return user;
+    });
+    await firebaseAuthPromise;
+    sharedCommentsEnabled = true;
+    subscribeToCurrentComments();
+  } catch {
+    sharedCommentsEnabled = false;
+    showError("Chưa kết nối được bình luận chung. Bình luận đang được lưu trên thiết bị này.");
+  }
+}
+
+function subscribeToCurrentComments() {
+  unsubscribeComments?.();
+  unsubscribeComments = undefined;
+  if (!sharedCommentsEnabled || !firebaseDatabase || !slides[index]) return;
+  const mediaId = slides[index].id;
+  const commentsQuery = query(ref(firebaseDatabase, `comments/${mediaId}`), orderByChild("createdAt"), limitToLast(200));
+  unsubscribeComments = onValue(commentsQuery, (snapshot) => {
+    const comments = [];
+    snapshot.forEach((child) => comments.push({ id: child.key, ...child.val() }));
+    comments.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+    if (!reactions[mediaId]) reactions[mediaId] = { loved: false, comments: [] };
+    reactions[mediaId].comments = comments;
+    if (slides[index]?.id === mediaId) updateSocial();
+  }, () => {
+    showError("Không thể đồng bộ bình luận. Hãy kiểm tra Firebase Rules.");
+  });
 }
 
 function driveMediaUrl(id) {
@@ -332,6 +378,7 @@ function showSlide(nextIndex, userAction = false) {
   $("#ambient").style.background = slide.color;
   updateProgress();
   updateSocial();
+  subscribeToCurrentComments();
 
   const handleMediaError = (label) => {
     if (requestId !== imageRequestId) return;
@@ -437,14 +484,27 @@ function renderComments() {
     const content = document.createElement("p"); content.className = "comment-content"; content.textContent = comment.text;
     const time = document.createElement("time"); time.className = "comment-time"; time.dateTime = comment.createdAt;
     time.textContent = new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(comment.createdAt));
-    const remove = document.createElement("button"); remove.type = "button"; remove.className = "delete-comment"; remove.ariaLabel = "Xoá bình luận"; remove.textContent = "×";
-    remove.addEventListener("click", () => deleteComment(comment.id));
-    item.append(author, content, time, remove); list.append(item);
+    item.append(author, content, time);
+    if (!sharedCommentsEnabled || comment.uid === firebaseUser?.uid) {
+      const remove = document.createElement("button"); remove.type = "button"; remove.className = "delete-comment"; remove.ariaLabel = "Xoá bình luận"; remove.textContent = "×";
+      remove.addEventListener("click", () => deleteComment(comment.id));
+      item.append(remove);
+    }
+    list.append(item);
   });
   list.scrollTop = list.scrollHeight;
 }
-function deleteComment(id) {
+async function deleteComment(id) {
   const reaction = currentReaction();
+  if (sharedCommentsEnabled && firebaseDatabase) {
+    try {
+      await remove(ref(firebaseDatabase, `comments/${slides[index].id}/${id}`));
+      return;
+    } catch {
+      showError("Không thể xoá bình luận này.");
+      return;
+    }
+  }
   reaction.comments = reaction.comments.filter((comment) => comment.id !== id);
   saveReactions(); renderComments(); updateSocial();
 }
@@ -486,11 +546,28 @@ $("#closeGallery").addEventListener("click", () => closeGallery());
 installButton.addEventListener("click", installApp);
 $("#closeComments").addEventListener("click", closeComments);
 $("#drawerBackdrop").addEventListener("click", closeComments);
-$("#commentForm").addEventListener("submit", (event) => {
+$("#commentForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = $("#commentName").value.trim();
   const text = $("#commentText").value.trim();
   if (!name || !text) return;
+  if (Date.now() - lastCommentAt < 3000) {
+    showError("Bạn gửi hơi nhanh. Hãy chờ một chút nhé.");
+    return;
+  }
+  lastCommentAt = Date.now();
+  if (sharedCommentsEnabled && firebaseDatabase) {
+    try {
+      const user = firebaseUser || await firebaseAuthPromise;
+      const commentRef = push(ref(firebaseDatabase, `comments/${slides[index].id}`));
+      await set(commentRef, { name, text, uid: user.uid, createdAt: serverTimestamp() });
+      $("#commentText").value = "";
+      return;
+    } catch {
+      showError("Không thể gửi bình luận chung. Hãy thử lại sau.");
+      return;
+    }
+  }
   currentReaction().comments.push({ id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`, name, text, createdAt: new Date().toISOString() });
   saveReactions(); $("#commentText").value = ""; renderComments(); updateSocial();
 });
@@ -543,4 +620,5 @@ document.addEventListener("visibilitychange", () => {
   const sharedMediaId = new URLSearchParams(window.location.search).get("media");
   const sharedIndex = sharedMediaId ? slides.findIndex((slide) => slide.id === sharedMediaId) : -1;
   showSlide(sharedIndex >= 0 ? sharedIndex : 0);
+  initializeSharedComments();
 })();

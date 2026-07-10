@@ -6,4 +6,13 @@ window.ALBUM_CONFIG = {
   albumTitle: "Những ngày bé lớn khôn",
   slideDuration: 6000,
   maxImageWidth: 1600,
+  firebase: {
+    apiKey: "AIzaSyAvjuQaeGxdokM1QjoUrNlrFPozQ8NgO4o",
+    authDomain: "baby-album-baf4d.firebaseapp.com",
+    databaseURL: "https://baby-album-baf4d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "baby-album-baf4d",
+    storageBucket: "baby-album-baf4d.firebasestorage.app",
+    messagingSenderId: "589281741214",
+    appId: "1:589281741214:web:d106e0a70f77e7a985ae8f",
+  },
 };

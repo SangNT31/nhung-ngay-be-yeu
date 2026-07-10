@@ -66,7 +66,7 @@ export default function AlbumPage() {
     <div className="drawer-backdrop" id="drawerBackdrop"></div>
     <aside className="comment-drawer" id="commentDrawer" aria-hidden="true" aria-labelledby="commentHeading">
       <header className="drawer-header">
-        <div><p className="eyebrow drawer-eyebrow">GÓC YÊU THƯƠNG</p><h2 id="commentHeading">Bình luận</h2></div>
+        <div><p className="eyebrow drawer-eyebrow">GÓC YÊU THƯƠNG</p><h2 id="commentHeading">Bình luận chung</h2></div>
         <button className="icon-button drawer-close" id="closeComments" aria-label="Đóng bình luận">×</button>
       </header>
       <div className="comment-list" id="commentList"></div>
