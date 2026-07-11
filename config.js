@@ -6,6 +6,24 @@ window.ALBUM_CONFIG = {
   albumTitle: "Những ngày bé lớn khôn",
   slideDuration: 6000,
   maxImageWidth: 1600,
+  musicTracks: [
+    {
+      name: "Chú Ong Nâu Và Bé - Bé Mai Vy",
+      src: "assets/music/Ch-Ong-Nu-V-B--B-Mai-Vy--Bi-ht-lyrics.mp3",
+    },
+    {
+      name: "Em Bé Khỏe Em Bé Ngoan - Bé Minh Thư",
+      src: "assets/music/Em-B-Khe-Em-B-Ngoan--B-Minh-Th--Bi-ht-lyrics.mp3",
+    },
+    {
+      name: "Top 100 Nhạc Thiếu Nhi Hay Nhất",
+      src: "assets/music/Top-100-Nhc-Thiu-Nhi-Hay-Nht--Album-320-lossless.mp3",
+    },
+    {
+      name: "Top 100 Nhạc Thiếu Nhi Hay Nhất 2",
+      src: "assets/music/Top-100-Nhc-Thiu-Nhi-Hay-Nht--Album-320-lossless (1).mp3",
+    },
+  ],
   firebase: {
     apiKey: "AIzaSyAvjuQaeGxdokM1QjoUrNlrFPozQ8NgO4o",
     authDomain: "baby-album-baf4d.firebaseapp.com",

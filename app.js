@@ -26,11 +26,11 @@ let touchStartX = 0;
 let imageRequestId = 0;
 const storageKey = "baby-album-reactions-v1";
 let reactions = loadReactions();
-let audioContext;
-let musicGain;
-let musicTimer;
+let audioPlayer;
 let musicPlaying = false;
 let trackIndex = 0;
+let currentPlaySilent = false;
+let musicFailureNotified = false;
 let deferredInstallPrompt;
 let firebaseDatabase;
 let firebaseUser;
@@ -55,37 +55,82 @@ let remove;
 let serverTimestamp;
 let set;
 
-const tracks = [
-  { name: "Giấc mơ kẹo ngọt", tempo: .5, notes: [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 1046.5, 783.99, 587.33, 659.25, 523.25, 392] },
-  { name: "Vườn sao nhỏ", tempo: .56, notes: [392, 493.88, 587.33, 659.25, 587.33, 493.88, 440, 523.25, 659.25, 783.99, 659.25, 523.25, 493.88, 440, 392, 329.63] },
-  { name: "Ngày nắng dịu dàng", tempo: .46, notes: [440, 554.37, 659.25, 739.99, 659.25, 554.37, 493.88, 587.33, 698.46, 880, 698.46, 587.33, 554.37, 493.88, 440, 369.99] },
+const defaultVocalTracks = [
+  {
+    name: "Dung dăng dung dẻ",
+    src: "assets/music/dung-dang-dung-de.mp3",
+  },
+  {
+    name: "Tập tầm vông",
+    src: "assets/music/tap-tam-vong.mp3",
+  },
+  {
+    name: "Bắc kim thang",
+    src: "assets/music/bac-kim-thang.mp3",
+  },
+  {
+    name: "Kéo cưa lừa xẻ",
+    src: "assets/music/keo-cua-lua-xe.mp3",
+  },
 ];
 
-function scheduleNote(frequency, startAt, duration, type, volume) {
-  const oscillator = audioContext.createOscillator();
-  const noteGain = audioContext.createGain();
-  oscillator.type = type;
-  oscillator.frequency.value = frequency;
-  noteGain.gain.setValueAtTime(0, startAt);
-  noteGain.gain.linearRampToValueAtTime(volume, startAt + .025);
-  noteGain.gain.exponentialRampToValueAtTime(.001, startAt + duration);
-  oscillator.connect(noteGain).connect(musicGain);
-  oscillator.start(startAt);
-  oscillator.stop(startAt + duration + .04);
+const tracks = Array.isArray(config.musicTracks) && config.musicTracks.length ? config.musicTracks : defaultVocalTracks;
+const musicSetupMessage = "Chưa có file nhạc ca sĩ hát. Hãy thêm file .mp3/.m4a vào assets/music hoặc cấu hình musicTracks trong config.js.";
+trackIndex = tracks.length > 1 ? Math.floor(Math.random() * tracks.length) : 0;
+
+function resolveTrackSource(track) {
+  return track.src || track.url || "";
 }
 
-function scheduleTrack() {
-  if (!audioContext || !musicGain) return;
-  const track = tracks[trackIndex % tracks.length];
-  const startAt = audioContext.currentTime + .03;
-  track.notes.forEach((frequency, noteIndex) => {
-    const noteAt = startAt + noteIndex * track.tempo;
-    scheduleNote(frequency, noteAt, track.tempo * .86, noteIndex % 4 === 0 ? "sine" : "triangle", .2);
-    if (noteIndex % 4 === 0) scheduleNote(frequency / 2, noteAt, track.tempo * 3.2, "sine", .055);
+function normalizeMusicError(error) {
+  const message = error?.message || "";
+  if (message.includes("supported sources") || message.includes("MEDIA_ELEMENT_ERROR")) return musicSetupMessage;
+  return message || musicSetupMessage;
+}
+
+function notifyMusicFailure(message, silentFailure) {
+  if (silentFailure || musicFailureNotified) return;
+  musicFailureNotified = true;
+  showError(message);
+  setTimeout(() => { musicFailureNotified = false; }, 700);
+}
+
+function prepareAudioPlayer() {
+  if (audioPlayer) return audioPlayer;
+  audioPlayer = new Audio();
+  audioPlayer.preload = "auto";
+  audioPlayer.volume = .86;
+  audioPlayer.addEventListener("ended", () => {
+    if (!musicPlaying) return;
+    trackIndex = (trackIndex + 1) % tracks.length;
+    playCurrentTrack({ silentFailure: true }).catch(() => {});
   });
+  audioPlayer.addEventListener("error", () => {
+    musicPlaying = false;
+    updateMusicButton();
+    soundPrompt.hidden = false;
+    notifyMusicFailure(musicSetupMessage, currentPlaySilent);
+  });
+  return audioPlayer;
+}
+
+async function playCurrentTrack({ silentFailure = false } = {}) {
+  if (!tracks.length) throw new Error("Chưa có danh sách bài hát");
+  const track = tracks[trackIndex % tracks.length];
+  const source = resolveTrackSource(track);
+  if (!source) throw new Error("Bài hát chưa có đường dẫn audio");
+  const player = prepareAudioPlayer();
+  currentPlaySilent = silentFailure;
+  const nextSource = new URL(source, window.location.href).href;
+  if (player.src !== nextSource) {
+    player.src = nextSource;
+    player.currentTime = 0;
+  }
   musicButton.title = `Đang phát: ${track.name}`;
-  trackIndex = (trackIndex + 1) % tracks.length;
-  musicTimer = setTimeout(scheduleTrack, track.notes.length * track.tempo * 1000);
+  await player.play();
+  musicPlaying = true;
+  soundPrompt.hidden = true;
+  updateMusicButton();
 }
 
 function updateMusicButton() {
@@ -96,41 +141,20 @@ function updateMusicButton() {
 
 async function startMusic({ silentFailure = false } = {}) {
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) throw new Error("Trình duyệt không hỗ trợ Web Audio");
-    if (!audioContext) {
-      audioContext = new AudioContext();
-      musicGain = audioContext.createGain();
-      musicGain.gain.value = .42;
-      musicGain.connect(audioContext.destination);
-    }
-    await audioContext.resume();
-    if (audioContext.state !== "running") throw new Error("Trình duyệt đang chặn âm thanh");
-    musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-    musicGain.gain.setValueAtTime(.42, audioContext.currentTime);
-    musicPlaying = true;
-    soundPrompt.hidden = true;
-    updateMusicButton();
-    if (!musicTimer) scheduleTrack();
-  } catch {
+    await playCurrentTrack({ silentFailure });
+  } catch (error) {
     musicPlaying = false;
     updateMusicButton();
     soundPrompt.hidden = false;
-    if (!silentFailure) showError("Trình duyệt đang chặn tự phát nhạc. Hãy chạm nút nốt nhạc để bật.");
+    notifyMusicFailure(normalizeMusicError(error), silentFailure);
   }
 }
 
 function stopMusic() {
-  if (audioContext && musicGain) {
-    musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-    musicGain.gain.setTargetAtTime(0, audioContext.currentTime, .04);
-    const contextToClose = audioContext;
-    setTimeout(() => contextToClose.close(), 140);
+  if (audioPlayer) {
+    audioPlayer.pause();
+    audioPlayer.currentTime = 0;
   }
-  clearTimeout(musicTimer);
-  musicTimer = undefined;
-  audioContext = undefined;
-  musicGain = undefined;
   musicPlaying = false;
   updateMusicButton();
 }
@@ -143,8 +167,9 @@ function toggleMusic() {
 function startMusicOnFirstInteraction(event) {
   if (event.target instanceof Element && event.target.closest("#musicButton")) return;
   document.removeEventListener("pointerdown", startMusicOnFirstInteraction);
+  document.removeEventListener("touchstart", startMusicOnFirstInteraction);
   document.removeEventListener("keydown", startMusicOnFirstInteraction);
-  startMusic();
+  startMusic({ silentFailure: true });
 }
 
 function loadReactions() {
@@ -636,6 +661,7 @@ playButton.addEventListener("click", togglePlay);
 musicButton.addEventListener("click", toggleMusic);
 soundPrompt.addEventListener("click", () => startMusic());
 document.addEventListener("pointerdown", startMusicOnFirstInteraction);
+document.addEventListener("touchstart", startMusicOnFirstInteraction);
 document.addEventListener("keydown", startMusicOnFirstInteraction);
 $("#fullscreenButton").addEventListener("click", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.());
 document.addEventListener("keydown", (event) => {
