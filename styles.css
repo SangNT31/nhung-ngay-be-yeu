@@ -6,7 +6,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
 body {
   margin: 0;
   color: var(--ink);
@@ -20,11 +20,15 @@ button { color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
 .app {
+  width: 100%;
+  max-width: 100vw;
+  height: 100vh;
   min-height: 100dvh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   padding: max(18px, env(safe-area-inset-top)) clamp(18px, 4vw, 64px) max(18px, env(safe-area-inset-bottom));
   gap: 18px;
+  overflow: hidden;
 }
 .topbar, .controls { display: flex; align-items: center; position: relative; z-index: 5; }
 .topbar { justify-content: space-between; }
@@ -46,7 +50,7 @@ button { color: inherit; }
 .music-button.music-playing::after { content: ""; position: absolute; inset: -3px; border: 1px solid rgba(214,111,114,.35); border-radius: 50%; animation: music-pulse 1.8s ease-out infinite; }
 @keyframes music-pulse { 70%, 100% { opacity: 0; transform: scale(1.28); } }
 
-.viewer { position: relative; width: 100%; min-width: 0; min-height: 0; overflow: hidden; display: grid; place-items: center; isolation: isolate; }
+.viewer { position: relative; width: 100%; max-width: 100%; min-width: 0; min-height: 0; overflow: hidden; display: grid; place-items: center; isolation: isolate; }
 .ambient {
   position: absolute; inset: 6% 10%; z-index: -1; filter: blur(70px); opacity: .35;
   background: #cf9f87; border-radius: 50%; transition: background 1s ease;
@@ -150,13 +154,23 @@ button { color: inherit; }
 .comment-compose svg { width: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 
 @media (max-width: 680px) {
-  .app { gap: 12px; padding-left: 12px; padding-right: 12px; }
-  .slide-frame { border-radius: 24px; }
-  .nav { width: 40px; height: 40px; top: auto; bottom: 20px; background: rgba(255,255,255,.22); color: white; box-shadow: none; }
-  .prev { left: auto; right: 72px; }.next { right: 22px; }
-  .caption { bottom: 88px; }
-  .caption h1 { font-size: clamp(34px, 11vw, 48px); }
-  .social-actions { right: 18px; bottom: 138px; }
+  .app {
+    height: 100svh;
+    min-height: 100svh;
+    max-height: 100svh;
+    gap: 10px;
+    padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+  }
+  .topbar { min-width: 0; }
+  .topbar-actions { flex: 0 0 auto; }
+  .viewer { height: 100%; place-items: stretch; }
+  .slide-frame { width: 100%; height: 100%; border-radius: 22px; }
+  .nav { width: 40px; height: 40px; top: auto; bottom: 16px; background: rgba(255,255,255,.22); color: white; box-shadow: none; }
+  .prev { left: auto; right: 68px; }.next { right: 18px; }
+  .caption { left: 18px; right: 84px; bottom: 82px; }
+  .caption h1 { font-size: clamp(30px, 10vw, 44px); }
+  .caption > p:last-child { max-width: 100%; }
+  .social-actions { right: 14px; bottom: 108px; }
   .social-button { min-width: 44px; height: 44px; padding: 0 11px; }
   .demo-badge { max-width: calc(100% - 32px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .comment-drawer { border-radius: 24px 24px 0 0; top: 9vh; padding-top: 22px; transform: translateY(102%); }
@@ -167,6 +181,17 @@ button { color: inherit; }
   .gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
   .gallery-card { border-radius: 10px; }
   .gallery-card-name { left: 8px; right: 8px; bottom: 7px; font-size: 9px; }
+}
+@supports (height: 100dvh) {
+  @media (max-width: 680px) {
+    .app { height: 100dvh; min-height: 100dvh; max-height: 100dvh; }
+  }
+}
+@media (max-width: 680px) and (max-height: 640px) {
+  .caption { right: 76px; bottom: 72px; }
+  .caption h1 { font-size: clamp(28px, 9vw, 38px); }
+  .caption > p:last-child { margin-top: 10px; }
+  .social-actions { bottom: 92px; }
 }
 @media (max-width: 420px) { .brand > span:last-child { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
